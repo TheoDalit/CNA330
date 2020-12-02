@@ -1,6 +1,7 @@
-# This script pulls from a job website and stores positions into a database. If there is a new posting it notifies the user.
+# Theodore Dalit
 # CNA 330
-# Zachary Rubin, zrubin@rtc.edu
+# This script pulls from a job website and stores positions into a database. If there is a new posting it notifies the user.
+
 import mysql.connector
 import sys
 import json
@@ -19,7 +20,9 @@ def connect_to_sql():
 # Create the table structure
 def create_tables(cursor, table):
     ## Add your code here. Starter code below
-    cursor.execute('''CREATE TABLE IF NOT EXISTS tablename (id INT PRIMARY KEY); ''')
+    cursor.execute('''CREATE TABLE IF NOT EXISTS jobhunter (id INT PRIMARY KEY auto_increment, type varchar(10), 
+    created_at DATE, company varchar(100), location varchar(100), title varchar(100), description text, 
+    how_to_apply varchar(1000), job_id varchar(36)); ''')
     return
 
 # Query the database.
@@ -30,25 +33,34 @@ def query_sql(cursor, query):
 
 # Add a new job
 def add_new_job(cursor, jobdetails):
-    ## Add your code here
-    query = "INSERT INTO"
+    type = jobdetails['type']
+    created_at = time.strptime(jobdetails['created_at'], "%a %b %d %H:%M:%S %Z %Y")  # https://www.programiz.com/python-programming/datetime/strftime & https://docs.python.org/3/library/datetime.html
+    company = jobdetails['company']
+    location = jobdetails['location']
+    title = jobdetails['title']
+    description = jobdetails['description']
+    how_to_apply = jobdetails['how_to_apply']
+    job_id = jobdetails['id']
+    query = cursor.execute("INSERT INTO jobhunter (type, created_at, company, location, title, description, how_to_apply, job_id" ") "
+    "VALUES(%s,%s,%s,%s,%s,%s,%s,%s)", (type, created_at, company, location, title, description, how_to_apply, job_id))
     return query_sql(cursor, query)
 
 # Check if new job
 def check_if_job_exists(cursor, jobdetails):
-    ## Add your code here
-    query = "SELECT"
+    job_id = jobdetails['id']
+    query = "SELECT * FROM jobhunter where job_id = \"%s\"" % job_id
     return query_sql(cursor, query)
 
 def delete_job(cursor, jobdetails):
-    ## Add your code here
-    query = "UPDATE"
+    job_id = jobdetails['id']
+    query = "DELETE FROM jobhunter where job_id = \"%s\"" % job_id
     return query_sql(cursor, query)
 
 # Grab new jobs from a website
 def fetch_new_jobs(arg_dict):
     # Code from https://github.com/RTCedu/CNA336/blob/master/Spring2018/Sql.py
-    query = "https://jobs.github.com/positions.json?" + "location=seattle" ## Add arguments here
+    # query = "https://jobs.github.com/positions.json?" + "location=remote" + "type=full time"
+    query = "https://jobs.github.com/positions.json?search=SQL&location=Remote"
     jsonpage = 0
     try:
         contents = urllib.request.urlopen(query)
@@ -83,10 +95,16 @@ def jobhunt(cursor, arg_dict):
     jobpage = fetch_new_jobs(arg_dict)
     # print (jobpage)
     ## Add your code here to parse the job page
+    add_or_delete_job(jobpage, cursor)
 
-    ## Add in your code here to check if the job already exists in the DB
-
-    ## Add in your code here to notify the user of a new posting
+def add_or_delete_job(jobpage, cursor):
+    for jobdetails in jobpage:
+        check_if_job_exists(cursor, jobdetails)
+        is_job_found = len(cursor.fetchall()) > 0
+        if is_job_found:
+            print("job is found: " + jobdetails["title"] + " from " + jobdetails["company"])
+        else:
+            print("New job is found: " + jobdetails["title"] + " from " + jobdetails["company"])
 
     ## EXTRA CREDIT: Add your code to delete old entries
 
@@ -98,7 +116,7 @@ def main():
     cursor = conn.cursor()
     create_tables(cursor, "table")
     # Load text file and store arguments into dictionary
-    arg_dict = load_config_file(sys.argv[1])
+    arg_dict = 0
     while(1):
         jobhunt(cursor, arg_dict)
         conn.commit()
